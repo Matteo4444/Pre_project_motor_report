@@ -1,0 +1,88 @@
+zeta= 0.826;
+%zeta = 0.5911;
+wd = (pi-acos(zeta))/0.4;
+sigma = sqrt((wd*zeta)^2/(1-zeta^2));
+
+pole1 = -835.6;
+pole2 = -2.817;
+pole3 = 0;
+
+theta1 = atan(wd/(-sigma-pole1));
+if(theta1 < 0)
+    theta1 = theta1 + pi;
+end
+theta2 = atan(wd/(-sigma-pole2));
+if(theta2 < 0)
+    theta2 = theta2 + pi;
+end
+theta3 = atan(wd/(-sigma-pole3));
+if(theta3 < 0)
+    theta3 = theta3 + pi;
+end
+
+thetap = 0.01;
+thetaz = theta1+theta2+theta3-pi+thetap;
+z=-(wd/tan(thetaz)+sigma);
+p=-(wd/tan(thetap)+sigma);
+
+s = tf('s');
+Cn = s-z;
+Cd = s-p;
+Gn = 4.413E4;
+Gd = s^3+641.3*s^2+3051*s;
+G = (Cn*Gn)/(Cd*Gd);
+[r, k] = rlocus(G);
+grid("on");
+% Target real part
+x_target = -sigma;
+
+% Initialize variables to store results
+closest_k = NaN; % Interpolated gain
+interp_pole_real = NaN; % Interpolated real part
+interp_pole_imag = NaN; % Interpolated imaginary part
+
+% Loop through k to find the interval containing the target
+for i = 1:length(k)-1
+    % Real and imaginary parts of the poles for two consecutive gains
+    real_parts_1 = real(r(:, i));
+    real_parts_2 = real(r(:, i+1));
+    imag_parts_1 = imag(r(:, i));
+    imag_parts_2 = imag(r(:, i+1));
+    
+    % Check all pole pairs for the closest match
+    for j = 1:size(r, 1)
+        % If the target lies between these poles, interpolate
+        if (real_parts_1(j) <= x_target && real_parts_2(j) >= x_target) || ...
+           (real_parts_1(j) >= x_target && real_parts_2(j) <= x_target)
+            % Linear interpolation to find k
+            k1 = k(i);
+            k2 = k(i+1);
+            x1 = real_parts_1(j);
+            x2 = real_parts_2(j);
+            y1 = imag_parts_1(j);
+            y2 = imag_parts_2(j);
+            
+            % Interpolated k using the line equation
+            closest_k = k1 + (x_target - x1) * (k2 - k1) / (x2 - x1);
+            
+            % Interpolated real and imaginary parts
+            interp_pole_real = x_target;
+            interp_pole_imag = y1 + (x_target - x1) * (y2 - y1) / (x2 - x1);
+            
+            break;
+        end
+    end
+    
+    % Stop searching once the closest interval is found
+    if ~isnan(closest_k)
+        break;
+    end
+end
+
+% Display the result
+if ~isnan(closest_k)
+    fprintf('The interpolated gain k where a pole has a real part closest to %.3f is approximately %.3f.\n', x_target, closest_k);
+    fprintf('The corresponding pole is (%.3f, %.3f).\n', interp_pole_real, interp_pole_imag);
+else
+    fprintf('No interval found where a pole has a real part close to %.3f.\n', x_target);
+end
