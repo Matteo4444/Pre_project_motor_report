@@ -1,0 +1,39 @@
+% List of datasets and their names
+datasets = {goodcurrent60sec1input, goodcurrent60sec05input, goodcurrent60sec025input};
+titles = {'Dataset 1 (1 Input)', 'Dataset 2 (0.5 Input)', 'Dataset 3 (0.25 Input)'};
+
+% Loop through each dataset to create separate windows
+for i = 1:length(datasets)
+    % Extract current dataset
+    data = datasets{i};
+    
+    % Extract time, sensors
+    time = data{:, 'time'}; % Use 'time{s}' as the time column name in your data
+    right_sensor = data{:, 'right_sensor'};
+    left_sensor = data{:, 'left_sensor'};
+    
+    % Calculate sensor currents
+    right_sensor_current = abs(right_sensor * 4.7 - 0.09);
+    left_sensor_current = abs(left_sensor * 4.7 - 0.09);
+    
+    % Create a new figure for the current dataset
+    figure('Name', titles{i}, 'NumberTitle', 'off');
+    
+    % Plot Right Sensor Current
+    subplot(2, 1, 1); % Top subplot
+    plot(time, right_sensor_current, 'b', 'LineWidth', 1.5, 'DisplayName', 'Right Sensor Current');
+    title([titles{i} ' - Right Sensor Current']);
+    xlabel('Time (s)');
+    ylabel('Current (A)');
+    legend('Location', 'best');
+    grid on;
+    
+    % Plot Left Sensor Current
+    subplot(2, 1, 2); % Bottom subplot
+    plot(time, left_sensor_current, 'b', 'LineWidth', 1.5, 'DisplayName', 'Left Sensor Current');
+    title([titles{i} ' - Left Sensor Current']);
+    xlabel('Time (s)');
+    ylabel('Current (A)');
+    legend('Location', 'best');
+    grid on;
+end
