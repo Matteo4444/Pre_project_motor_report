@@ -1,0 +1,65 @@
+% Load the data
+data = readtable('angle_8_sec_0_25_input.csv');
+
+% Extract the time and sensor data
+time = data.("time_s_");
+sensor = data.left_sensor; % Replace with right_sensor if needed
+
+% Remove the first second of data
+valid_indices = time > 1;
+time = time(valid_indices);
+sensor = sensor(valid_indices);
+
+% Initialize variables
+num_points = length(sensor);
+rotation_count = 0;
+angular_velocity = zeros(num_points, 1);
+full_rotations = zeros(num_points, 1);
+
+% Loop to compute angular velocity
+for i = 2:num_points
+    if sensor(i) < sensor(i-1)
+        % Increment rotation count when the sensor value resets
+        rotation_count = rotation_count + 1;
+    end
+    
+    % Calculate total rotations (integer + fractional part)
+    full_rotations(i) = rotation_count + sensor(i);
+    
+    % Angular velocity: derivative of total angle with respect to time
+    angular_velocity(i) = (full_rotations(i) - full_rotations(i-1)) / (time(i) - time(i-1));
+end
+
+% Apply moving average to smooth angular velocity
+window_size = 10; % Adjust the size of the moving average window
+angular_velocity_smoothed = movmean(angular_velocity, window_size);
+
+% Filter out angular velocity values above 25
+angular_velocity_smoothed(angular_velocity_smoothed > 100) = NaN;
+
+% Identify the steady-state region (manually adjusted based on the plot)
+steady_state_indices = (time > 3) & (time < 8); % Adjust the range based on observation
+time_steady = time(steady_state_indices);
+angular_velocity_steady = angular_velocity_smoothed(steady_state_indices);
+
+% Remove spikes in the steady-state region
+deviation_threshold = 2; % Adjust this threshold as needed
+median_velocity = median(angular_velocity_steady, 'omitnan');
+angular_velocity_steady(abs(angular_velocity_steady - median_velocity) > deviation_threshold) = NaN;
+
+% Calculate the average velocity in the steady-state region
+average_velocity_steady = mean(angular_velocity_steady, 'omitnan');
+
+% Plot results
+figure;
+hold on;
+plot(time, angular_velocity_smoothed, 'LineWidth', 1.5, 'DisplayName', 'Smoothed Angular Velocity');
+plot(time_steady, angular_velocity_steady, 'o', 'DisplayName', 'Filtered Steady-State Data');
+xlabel('Time (s)');
+ylabel('Angular Velocity (rotations per second)');
+title('Filtered Angular Velocity and Steady-State Analysis');
+legend;
+grid on;
+
+% Display the average velocity
+disp(['Average velocity in the steady-state region: ', num2str(average_velocity_steady), ' rotations/second']);
